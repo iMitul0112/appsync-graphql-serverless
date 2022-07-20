@@ -1,0 +1,427 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "The AWS CloudFormation template for this Serverless application",
+  "Resources": {
+    "ServerlessDeploymentBucket": {
+      "Type": "AWS::S3::Bucket",
+      "Properties": {
+        "BucketEncryption": {
+          "ServerSideEncryptionConfiguration": [
+            {
+              "ServerSideEncryptionByDefault": {
+                "SSEAlgorithm": "AES256"
+              }
+            }
+          ]
+        }
+      }
+    },
+    "ServerlessDeploymentBucketPolicy": {
+      "Type": "AWS::S3::BucketPolicy",
+      "Properties": {
+        "Bucket": {
+          "Ref": "ServerlessDeploymentBucket"
+        },
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": "s3:*",
+              "Effect": "Deny",
+              "Principal": "*",
+              "Resource": [
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition"
+                      },
+                      ":s3:::",
+                      {
+                        "Ref": "ServerlessDeploymentBucket"
+                      },
+                      "/*"
+                    ]
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition"
+                      },
+                      ":s3:::",
+                      {
+                        "Ref": "ServerlessDeploymentBucket"
+                      }
+                    ]
+                  ]
+                }
+              ],
+              "Condition": {
+                "Bool": {
+                  "aws:SecureTransport": false
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "CreateFacultyLogGroup": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": "/aws/lambda/AppSync-example-dev-createFaculty"
+      }
+    },
+    "GetFacultyLogGroup": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": "/aws/lambda/AppSync-example-dev-getFaculty"
+      }
+    },
+    "UpdateFacultyLogGroup": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": "/aws/lambda/AppSync-example-dev-updateFaculty"
+      }
+    },
+    "DeleteFacultyLogGroup": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": "/aws/lambda/AppSync-example-dev-deleteFaculty"
+      }
+    },
+    "IamRoleLambdaExecution": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": [
+                  "lambda.amazonaws.com"
+                ]
+              },
+              "Action": [
+                "sts:AssumeRole"
+              ]
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": {
+              "Fn::Join": [
+                "-",
+                [
+                  "AppSync-example",
+                  "dev",
+                  "lambda"
+                ]
+              ]
+            },
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "logs:CreateLogStream",
+                    "logs:CreateLogGroup"
+                  ],
+                  "Resource": [
+                    {
+                      "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/AppSync-example-dev*:*"
+                    }
+                  ]
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "logs:PutLogEvents"
+                  ],
+                  "Resource": [
+                    {
+                      "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/AppSync-example-dev*:*:*"
+                    }
+                  ]
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "dynamodb:PutItem",
+                    "dynamodb:GetItem",
+                    "dynamodb:UpdateItem",
+                    "dynamodb:DeleteItem",
+                    "dynamodb:Scan"
+                  ],
+                  "Resource": [
+                    {
+                      "Fn::GetAtt": [
+                        "FacultyTable",
+                        "Arn"
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ],
+        "Path": "/",
+        "RoleName": {
+          "Fn::Join": [
+            "-",
+            [
+              "AppSync-example",
+              "dev",
+              {
+                "Ref": "AWS::Region"
+              },
+              "lambdaRole"
+            ]
+          ]
+        }
+      }
+    },
+    "CreateFacultyLambdaFunction": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": {
+            "Ref": "ServerlessDeploymentBucket"
+          },
+          "S3Key": "serverless/AppSync-example/dev/1658302819389-2022-07-20T07:40:19.389Z/AppSync-example.zip"
+        },
+        "Handler": "functions/createFaculty.handler",
+        "Runtime": "nodejs12.x",
+        "FunctionName": "AppSync-example-dev-createFaculty",
+        "MemorySize": 1024,
+        "Timeout": 6,
+        "Environment": {
+          "Variables": {
+            "FACULTY_TABLE_NAME": {
+              "Ref": "FacultyTable"
+            }
+          }
+        },
+        "Role": {
+          "Fn::GetAtt": [
+            "IamRoleLambdaExecution",
+            "Arn"
+          ]
+        }
+      },
+      "DependsOn": [
+        "CreateFacultyLogGroup"
+      ]
+    },
+    "GetFacultyLambdaFunction": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": {
+            "Ref": "ServerlessDeploymentBucket"
+          },
+          "S3Key": "serverless/AppSync-example/dev/1658302819389-2022-07-20T07:40:19.389Z/AppSync-example.zip"
+        },
+        "Handler": "functions/getFaculty.handler",
+        "Runtime": "nodejs12.x",
+        "FunctionName": "AppSync-example-dev-getFaculty",
+        "MemorySize": 1024,
+        "Timeout": 6,
+        "Environment": {
+          "Variables": {
+            "FACULTY_TABLE_NAME": {
+              "Ref": "FacultyTable"
+            }
+          }
+        },
+        "Role": {
+          "Fn::GetAtt": [
+            "IamRoleLambdaExecution",
+            "Arn"
+          ]
+        }
+      },
+      "DependsOn": [
+        "GetFacultyLogGroup"
+      ]
+    },
+    "UpdateFacultyLambdaFunction": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": {
+            "Ref": "ServerlessDeploymentBucket"
+          },
+          "S3Key": "serverless/AppSync-example/dev/1658302819389-2022-07-20T07:40:19.389Z/AppSync-example.zip"
+        },
+        "Handler": "functions/updateFaculty.handler",
+        "Runtime": "nodejs12.x",
+        "FunctionName": "AppSync-example-dev-updateFaculty",
+        "MemorySize": 1024,
+        "Timeout": 6,
+        "Environment": {
+          "Variables": {
+            "FACULTY_TABLE_NAME": {
+              "Ref": "FacultyTable"
+            }
+          }
+        },
+        "Role": {
+          "Fn::GetAtt": [
+            "IamRoleLambdaExecution",
+            "Arn"
+          ]
+        }
+      },
+      "DependsOn": [
+        "UpdateFacultyLogGroup"
+      ]
+    },
+    "DeleteFacultyLambdaFunction": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": {
+            "Ref": "ServerlessDeploymentBucket"
+          },
+          "S3Key": "serverless/AppSync-example/dev/1658302819389-2022-07-20T07:40:19.389Z/AppSync-example.zip"
+        },
+        "Handler": "functions/deleteFaculty.handler",
+        "Runtime": "nodejs12.x",
+        "FunctionName": "AppSync-example-dev-deleteFaculty",
+        "MemorySize": 1024,
+        "Timeout": 6,
+        "Environment": {
+          "Variables": {
+            "FACULTY_TABLE_NAME": {
+              "Ref": "FacultyTable"
+            }
+          }
+        },
+        "Role": {
+          "Fn::GetAtt": [
+            "IamRoleLambdaExecution",
+            "Arn"
+          ]
+        }
+      },
+      "DependsOn": [
+        "DeleteFacultyLogGroup"
+      ]
+    },
+    "CreateFacultyLambdaVersionu9o9yy7oGpE7SpIwxn4q0JdyqvG9dC83o11qFI2EGE": {
+      "Type": "AWS::Lambda::Version",
+      "DeletionPolicy": "Retain",
+      "Properties": {
+        "FunctionName": {
+          "Ref": "CreateFacultyLambdaFunction"
+        },
+        "CodeSha256": "Uu3UdDillQJNpBYBKkizhvY2zfSyJ5nfMzYYU0qTVbA="
+      }
+    },
+    "GetFacultyLambdaVersiont3r8c7fsykmEkFddPPqmFECkQeGFFUyZtVT66vVw": {
+      "Type": "AWS::Lambda::Version",
+      "DeletionPolicy": "Retain",
+      "Properties": {
+        "FunctionName": {
+          "Ref": "GetFacultyLambdaFunction"
+        },
+        "CodeSha256": "Uu3UdDillQJNpBYBKkizhvY2zfSyJ5nfMzYYU0qTVbA="
+      }
+    },
+    "UpdateFacultyLambdaVersionOrvxfABEWZUdm0BouMJg9qnatjXhjAGk3tKeAGcLDY": {
+      "Type": "AWS::Lambda::Version",
+      "DeletionPolicy": "Retain",
+      "Properties": {
+        "FunctionName": {
+          "Ref": "UpdateFacultyLambdaFunction"
+        },
+        "CodeSha256": "Uu3UdDillQJNpBYBKkizhvY2zfSyJ5nfMzYYU0qTVbA="
+      }
+    },
+    "DeleteFacultyLambdaVersionsYMvboCKxty804vW3CcpVeEIer46Id6i48olAGUPg4": {
+      "Type": "AWS::Lambda::Version",
+      "DeletionPolicy": "Retain",
+      "Properties": {
+        "FunctionName": {
+          "Ref": "DeleteFacultyLambdaFunction"
+        },
+        "CodeSha256": "Uu3UdDillQJNpBYBKkizhvY2zfSyJ5nfMzYYU0qTVbA="
+      }
+    },
+    "FacultyTable": {
+      "Type": "AWS::DynamoDB::Table",
+      "Properties": {
+        "KeySchema": [
+          {
+            "AttributeName": "id",
+            "KeyType": "HASH"
+          }
+        ],
+        "AttributeDefinitions": [
+          {
+            "AttributeName": "id",
+            "AttributeType": "S"
+          }
+        ],
+        "BillingMode": "PAY_PER_REQUEST",
+        "TableName": "Faculty-Table-dev"
+      }
+    }
+  },
+  "Outputs": {
+    "ServerlessDeploymentBucketName": {
+      "Value": {
+        "Ref": "ServerlessDeploymentBucket"
+      },
+      "Export": {
+        "Name": "sls-AppSync-example-dev-ServerlessDeploymentBucketName"
+      }
+    },
+    "CreateFacultyLambdaFunctionQualifiedArn": {
+      "Description": "Current Lambda function version",
+      "Value": {
+        "Ref": "CreateFacultyLambdaVersionu9o9yy7oGpE7SpIwxn4q0JdyqvG9dC83o11qFI2EGE"
+      },
+      "Export": {
+        "Name": "sls-AppSync-example-dev-CreateFacultyLambdaFunctionQualifiedArn"
+      }
+    },
+    "GetFacultyLambdaFunctionQualifiedArn": {
+      "Description": "Current Lambda function version",
+      "Value": {
+        "Ref": "GetFacultyLambdaVersiont3r8c7fsykmEkFddPPqmFECkQeGFFUyZtVT66vVw"
+      },
+      "Export": {
+        "Name": "sls-AppSync-example-dev-GetFacultyLambdaFunctionQualifiedArn"
+      }
+    },
+    "UpdateFacultyLambdaFunctionQualifiedArn": {
+      "Description": "Current Lambda function version",
+      "Value": {
+        "Ref": "UpdateFacultyLambdaVersionOrvxfABEWZUdm0BouMJg9qnatjXhjAGk3tKeAGcLDY"
+      },
+      "Export": {
+        "Name": "sls-AppSync-example-dev-UpdateFacultyLambdaFunctionQualifiedArn"
+      }
+    },
+    "DeleteFacultyLambdaFunctionQualifiedArn": {
+      "Description": "Current Lambda function version",
+      "Value": {
+        "Ref": "DeleteFacultyLambdaVersionsYMvboCKxty804vW3CcpVeEIer46Id6i48olAGUPg4"
+      },
+      "Export": {
+        "Name": "sls-AppSync-example-dev-DeleteFacultyLambdaFunctionQualifiedArn"
+      }
+    }
+  }
+}

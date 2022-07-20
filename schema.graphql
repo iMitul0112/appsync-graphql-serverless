@@ -1,0 +1,37 @@
+
+ schema {
+    query: Query
+    mutation: Mutation
+}
+
+type Query {
+    getFaculty: [Get!]!
+}
+
+type Mutations {
+    createFaculty(id: ID!, name: String!, description: String!): Save
+    updateFaculty(id: ID!, name: String!, description: String!): Update
+    deleteFaculty(id: ID!): Delete
+}
+
+type Get {
+    id: ID!
+    name: String
+    description: String 
+}
+
+type Save {
+    id: ID!
+    name: String
+    description: String 
+}
+
+type Update {
+    id: ID!
+    name: String
+    description: String 
+}
+
+type Delete {
+    id: ID! 
+}

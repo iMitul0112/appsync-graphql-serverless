@@ -1,0 +1,103 @@
+service: AppSync-example
+
+frameworkVersion: '2 || 3'
+
+custom:
+  FACULTY_TABLE: 'Faculty-Table-${sls:stage}'
+  stage: dev
+  
+  appsync:
+    name: appsync-Faculty-apis-demo-${sls:stage}
+    schema: schema.graphql
+    authenticationType: API_KEY
+    mappingTemplates:
+      - type: Mutation
+        field: createFaculty
+        dataSource: createFacultyFunction
+        request: false
+        response: false
+      - type: Query
+        field: getFaculty
+        dataSource: getFacultyFunction
+        request: false
+        response: false
+      - type: Mutation
+        field: updateFaculty
+        dataSource: updateFacultyFunction
+        request: false
+        response: false
+      - type: Mutation
+        field: deleteFaculty
+        dataSource: deleteFacultyFunction
+        request: false
+        response: false
+    dataSources:
+      - type: AWS_LAMBDA
+        name: createFacultyFunction
+        config:
+          functionName: createFaculty
+      - type: AWS_LAMBDA
+        name: getFacultyFunction
+        config:
+          functionName: getFaculty
+      - type: AWS_LAMBDA
+        name: updateFacultyFunction
+        config:
+          functionName: updateFaculty
+      - type: AWS_LAMBDA
+        name: deleteFacultyFunction
+        config:
+          functionName: deleteFaculty
+      
+plugins:
+  - serverless-appsync-plugin
+
+provider:
+  name: aws
+  runtime: nodejs12.x
+  region: us-east-1
+  lambdaHashingVersion: 20201221
+  iam:
+    role: 
+      statements:
+       - Effect: "Allow"
+         Action: 
+          - "dynamodb:PutItem"
+          - "dynamodb:GetItem"
+          - "dynamodb:UpdateItem"
+          - "dynamodb:DeleteItem"
+          - "dynamodb:Scan"
+         Resource:
+          - Fn::GetAtt: [ FacultyTable, Arn ]
+
+functions:
+  createFaculty:
+    handler: functions/createFaculty.handler
+    environment:
+      FACULTY_TABLE_NAME: !Ref FacultyTable 
+  getFaculty:
+    handler: functions/getFaculty.handler
+    environment:
+      FACULTY_TABLE_NAME: !Ref FacultyTable
+  updateFaculty:
+    handler: functions/updateFaculty.handler
+    environment:
+      FACULTY_TABLE_NAME: !Ref FacultyTable
+  deleteFaculty:
+    handler: functions/deleteFaculty.handler
+    environment:
+      FACULTY_TABLE_NAME: !Ref FacultyTable    
+  
+resources:
+  Resources:
+    FacultyTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+        BillingMode: PAY_PER_REQUEST
+        TableName: ${self:custom.FACULTY_TABLE}
